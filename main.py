@@ -17,7 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), r"D:\Project\hr_dashboard\WA_Fn-UseC_-HR-Employee-Attrition.csv")
+# ─── Load CSV ──────────────────────────────────────────────────────────────────
+DATA_PATH = os.path.join(os.path.dirname(__file__), r"D:\Project\hr_dashboard\data.csv")
 
 EDUCATION_MAP = {"1": "Below College", "2": "College", "3": "Bachelor", "4": "Master", "5": "Doctor"}
 
@@ -41,6 +42,8 @@ def load_data(
             rows.append(row)
     return rows
 
+
+# ─── Filter Options ────────────────────────────────────────────────────────────
 @app.get("/api/filters")
 def get_filters():
     rows = load_data()
@@ -54,6 +57,8 @@ def get_filters():
         "departments": sorted(set(r["Department"] for r in rows)),
     }
 
+
+# ─── KPI Summary ───────────────────────────────────────────────────────────────
 @app.get("/api/kpis")
 def get_kpis(
     gender: Optional[str] = Query(None),
@@ -77,6 +82,8 @@ def get_kpis(
         "avg_satisfaction": round(avg_sat, 2),
     }
 
+
+# ─── Attrition by Category (bar chart) ────────────────────────────────────────
 @app.get("/api/attrition-by-department")
 def attrition_by_department(
     gender: Optional[str] = Query(None),
@@ -122,6 +129,8 @@ def attrition_by_jobrole(
         "rate": [round(role_attr[l] / role_total[l] * 100, 1) if role_total[l] else 0 for l in labels],
     }
 
+
+# ─── Age Distribution (histogram) ─────────────────────────────────────────────
 @app.get("/api/age-distribution")
 def age_distribution(
     gender: Optional[str] = Query(None),
@@ -143,6 +152,8 @@ def age_distribution(
                 attr_counts[idx] += 1
     return {"labels": labels, "total": total_counts, "attrition": attr_counts}
 
+
+# ─── Gender Split (donut) ──────────────────────────────────────────────────────
 @app.get("/api/gender-split")
 def gender_split(
     gender: Optional[str] = Query(None),
@@ -160,6 +171,8 @@ def gender_split(
         "attrition": [attr_cnt[l] for l in labels],
     }
 
+
+# ─── Monthly Income by Job Role (horizontal bar) ───────────────────────────────
 @app.get("/api/income-by-role")
 def income_by_role(
     gender: Optional[str] = Query(None),
@@ -177,6 +190,8 @@ def income_by_role(
         "avg_income": [round(sum(role_income[l]) / len(role_income[l])) if role_income[l] else 0 for l in labels],
     }
 
+
+# ─── Job Satisfaction Distribution (grouped bar) ──────────────────────────────
 @app.get("/api/satisfaction-distribution")
 def satisfaction_distribution(
     gender: Optional[str] = Query(None),
@@ -289,4 +304,6 @@ def serve_frontend():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
