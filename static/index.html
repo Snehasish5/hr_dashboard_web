@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HR Attrition Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0c10;
+      --surface: #111318;
+      --surface2: #181c24;
+      --border: #252a35;
+      --accent: #e8ff47;
+      --accent2: #ff4d6d;
+      --accent3: #00e5ff;
+      --accent4: #b47aff;
+      --text: #e8eaf0;
+      --text-dim: #6b7280;
+      --text-muted: #3a4050;
+      --green: #39ff8a;
+      --orange: #ff8c42;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(232,255,71,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(232,255,71,0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: #212b3a;
+      border-bottom: 1px solid rgba(232,255,71,0.12);
+      padding: 0 3rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 72px;
+      transition: background 0.35s ease, backdrop-filter 0.35s ease;
+    }
+
+    .logo {
+      display: flex; align-items: center;
+    }
+    .logo-icon { display: none; }
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.2rem; font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+    }
+    .logo-text span { color: var(--accent); }
+
+    .header-right {
+      display: flex; align-items: center; gap: 2rem;
+    }
+    .header-right strong { display: none; }
+    .header-right > div { display: none; }
+
+    .header-nav {
+      display: flex; align-items: center; gap: 2rem;
+    }
+    .header-nav a {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem; font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: 0.01em;
+      transition: opacity 0.15s;
+    }
+    .header-nav a:hover { opacity: 0.7; }
+
+    header.scrolled {
+      background: rgba(33,43,58,0.95) !important;
+      backdrop-filter: blur(14px);
+    }
+    header.transparent {
+      background: #212b3a !important;
+      backdrop-filter: none;
+    }
+
+    main {
+      position: relative; z-index: 1;
+      max-width: 1600px; margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .filter-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: visible;
+    }
+    .filter-panel::before {
+      content: '';
+      position: absolute; top: 0; left: 0;
+      width: 4px; height: 100%;
+      background: var(--accent);
+    }
+
+    .filter-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem; letter-spacing: 0.2em;
+      color: var(--text-dim); text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+
+    .filter-groups {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+    }
+
+    .filter-group label {
+      display: block;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; letter-spacing: 0.15em;
+      color: var(--text-dim); text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+
+    .custom-select {
+      position: relative;
+      width: 100%;
+    }
+
+    .select-trigger {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+      transition: border-color 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .select-trigger:hover { border-color: var(--accent); color: var(--text); }
+    .select-trigger.open { border-color: var(--accent); color: var(--text); }
+    .select-trigger.has-value { border-color: var(--accent); color: var(--accent); }
+
+    .select-trigger .chevron {
+      width: 10px; height: 10px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: rotate(45deg);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+      margin-top: -3px;
+    }
+    .select-trigger.open .chevron { transform: rotate(-135deg); margin-top: 3px; }
+
+    .select-dropdown {
+      display: none;
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface2);
+      border: 1px solid var(--accent);
+      border-radius: 2px;
+      z-index: 9999;
+      overflow-y: auto;
+      max-height: 280px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) var(--surface2);
+    }
+    .select-dropdown::-webkit-scrollbar { width: 4px; }
+    .select-dropdown::-webkit-scrollbar-track { background: var(--surface2); }
+    .select-dropdown::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+    .select-dropdown.open { display: block; animation: dropDown 0.15s ease; }
+
+    @keyframes dropDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .select-option {
+      padding: 8px 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+    }
+    .select-option:last-child { border-bottom: none; }
+    .select-option:hover { background: rgba(232,255,71,0.08); color: var(--accent); }
+    .select-option.selected {
+      background: rgba(232,255,71,0.12);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .select-option.clear-opt {
+      color: var(--accent2);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+    }
+    .select-option.clear-opt:hover { background: rgba(255,77,109,0.1); color: var(--accent2); }
+
+    .filter-actions {
+      display: flex; align-items: center; gap: 12px;
+      margin-top: 1.25rem; padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn-reset {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem; letter-spacing: 0.1em;
+      padding: 8px 18px;
+      border: 1px solid var(--accent2);
+      background: transparent; color: var(--accent2);
+      cursor: pointer; border-radius: 2px;
+      transition: all 0.15s; text-transform: uppercase;
+    }
+    .btn-reset:hover { background: var(--accent2); color: white; }
+
+    .active-filters {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; color: var(--text-dim);
+    }
+    .active-filters span { color: var(--accent); }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 1.25rem 1.5rem;
+      position: relative; overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .kpi-card:hover { border-color: var(--accent); }
+    .kpi-card::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .kpi-card:nth-child(1)::after { background: var(--accent3); }
+    .kpi-card:nth-child(2)::after { background: var(--accent2); }
+    .kpi-card:nth-child(3)::after { background: var(--accent); }
+    .kpi-card:nth-child(4)::after { background: var(--accent4); }
+    .kpi-card:nth-child(5)::after { background: var(--green); }
+
+    .kpi-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; letter-spacing: 0.15em;
+      color: var(--text-dim); text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .kpi-value {
+      font-size: 2rem; font-weight: 800; line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .kpi-card:nth-child(1) .kpi-value { color: var(--accent3); }
+    .kpi-card:nth-child(2) .kpi-value { color: var(--accent2); }
+    .kpi-card:nth-child(3) .kpi-value { color: var(--accent); }
+    .kpi-card:nth-child(4) .kpi-value { color: var(--accent4); }
+    .kpi-card:nth-child(5) .kpi-value { color: var(--green); }
+
+    .kpi-sub {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    .section-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; letter-spacing: 0.2em;
+      color: var(--text-dim); text-transform: uppercase;
+      margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-title::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    .chart-grid {
+      display: grid;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .chart-grid-2 { grid-template-columns: 1fr 1fr; }
+    .chart-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .chart-grid-3-1 { grid-template-columns: 2fr 1fr; }
+    .chart-grid-1-2 { grid-template-columns: 1fr 2fr; }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 1.5rem;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+    .chart-card:hover { border-color: rgba(232,255,71,0.3); }
+
+    .chart-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 1.25rem;
+    }
+
+    .chart-title {
+      font-size: 0.95rem; font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .chart-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.55rem; padding: 3px 8px;
+      border-radius: 2px; text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .badge-bar { background: rgba(0,229,255,0.1); color: var(--accent3); border: 1px solid rgba(0,229,255,0.2); }
+    .badge-donut { background: rgba(232,255,71,0.1); color: var(--accent); border: 1px solid rgba(232,255,71,0.2); }
+    .badge-line { background: rgba(180,122,255,0.1); color: var(--accent4); border: 1px solid rgba(180,122,255,0.2); }
+    .badge-radar { background: rgba(57,255,138,0.1); color: var(--green); border: 1px solid rgba(57,255,138,0.2); }
+    .badge-polar { background: rgba(255,77,109,0.1); color: var(--accent2); border: 1px solid rgba(255,77,109,0.2); }
+    .badge-hist { background: rgba(255,140,66,0.1); color: var(--orange); border: 1px solid rgba(255,140,66,0.2); }
+
+    .chart-container { position: relative; }
+    .chart-container canvas { max-height: 280px; }
+    .chart-container-tall canvas { max-height: 340px; }
+
+    .loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 200px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem; color: var(--text-dim);
+      letter-spacing: 0.1em;
+    }
+    .loading::before {
+      content: '';
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 2rem 3rem;
+      background: var(--surface);
+    }
+
+    .footer-inner {
+      display: flex; align-items: center; justify-content: center;
+      gap: 1.25rem; flex-wrap: wrap;
+      margin-bottom: 0.85rem;
+    }
+
+    .footer-brand {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    .footer-brand span { color: var(--accent2); }
+
+    .footer-divider {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+
+    .footer-tagline {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--text-dim);
+      font-style: italic;
+      letter-spacing: 0.01em;
+    }
+
+    .footer-meta {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+    }
+
+    .footer-copy {
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.58rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    @media (max-width: 1200px) {
+      .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+      .chart-grid-3 { grid-template-columns: 1fr 1fr; }
+      .filter-groups { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 0 1.25rem;
+        height: 56px;
+      }
+      .logo-text { font-size: 1.3rem; }
+      .header-nav { gap: 1rem; }
+      .header-nav a { font-size: 0.75rem; }
+
+      main { padding: 1rem; }
+
+      .filter-panel { padding: 1rem 1rem 1rem 1.5rem; }
+      .filter-groups { grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+      .filter-title { font-size: 0.6rem; margin-bottom: 0.85rem; }
+      .filter-actions { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .active-filters { font-size: 0.55rem; }
+
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.65rem;
+        margin-bottom: 1.25rem;
+      }
+      .kpi-card { padding: 1rem 1.1rem; }
+      .kpi-value { font-size: 1.5rem; }
+      .kpi-label { font-size: 0.55rem; }
+      .kpi-sub { font-size: 0.55rem; }
+
+      .section-title { font-size: 0.7rem; }
+
+      .chart-grid-2,
+      .chart-grid-3,
+      .chart-grid-3-1,
+      .chart-grid-1-2 { grid-template-columns: 1fr; }
+      .chart-grid { gap: 0.85rem; margin-bottom: 0.85rem; }
+
+      .chart-card { padding: 1rem; }
+      .chart-title { font-size: 0.82rem; }
+      .chart-container canvas { max-height: 220px; }
+      .chart-container-tall canvas { max-height: 260px; }
+
+      footer { padding: 1.5rem 1.25rem; }
+      .footer-inner { gap: 0.75rem; }
+      .footer-brand { font-size: 0.88rem; }
+      .footer-tagline { font-size: 0.72rem; text-align: center; }
+      .footer-meta { font-size: 0.52rem; text-align: center; }
+      .footer-copy { font-size: 0.5rem; }
+    }
+
+    @media (max-width: 480px) {
+      .header-nav { gap: 0.65rem; }
+      .header-nav a { font-size: 0.68rem; }
+      .logo-text { font-size: 1.1rem; }
+
+      .filter-groups { grid-template-columns: 1fr; }
+
+      .kpi-value { font-size: 1.25rem; }
+      .kpi-card { padding: 0.85rem 1rem; }
+
+      .chart-container canvas { max-height: 180px; }
+      .chart-container-tall canvas { max-height: 220px; }
+
+      .footer-inner { flex-direction: column; gap: 0.4rem; text-align: center; }
+      .footer-divider { display: none; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .chart-card { animation: fadeIn 0.4s ease both; }
+    .chart-card:nth-child(2) { animation-delay: 0.05s; }
+    .chart-card:nth-child(3) { animation-delay: 0.1s; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-text">HR Attrition<span>.</span></div>
+  </div>
+  <nav class="header-nav">
+    <a href="#kpi-grid">Overview</a>
+    <a href="#attrition-analysis">Attrition</a>
+    <a href="#workforce-profile">Workforce</a>
+    <a href="#satisfaction-compensation">Satisfaction</a>
+    <a href="#tenure-wellbeing">Tenure</a>
+  </nav>
+</header>
+
+<main>
+
+  <div class="filter-panel">
+    <div class="filter-title">FILTER PARAMETERS</div>
+    <div class="filter-groups">
+      <div class="filter-group">
+        <label>Gender</label>
+        <div class="custom-select" id="gender-select">
+          <div class="select-trigger" onclick="toggleDropdown('gender-select')">
+            <span class="select-label">All Genders</span>
+            <span class="chevron"></span>
+          </div>
+          <div class="select-dropdown" id="gender-dropdown"></div>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>Department</label>
+        <div class="custom-select" id="department-select">
+          <div class="select-trigger" onclick="toggleDropdown('department-select')">
+            <span class="select-label">All Departments</span>
+            <span class="chevron"></span>
+          </div>
+          <div class="select-dropdown" id="department-dropdown"></div>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>Job Role</label>
+        <div class="custom-select" id="jobrole-select">
+          <div class="select-trigger" onclick="toggleDropdown('jobrole-select')">
+            <span class="select-label">All Job Roles</span>
+            <span class="chevron"></span>
+          </div>
+          <div class="select-dropdown" id="jobrole-dropdown"></div>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>Education Level</label>
+        <div class="custom-select" id="education-select">
+          <div class="select-trigger" onclick="toggleDropdown('education-select')">
+            <span class="select-label">All Levels</span>
+            <span class="chevron"></span>
+          </div>
+          <div class="select-dropdown" id="education-dropdown"></div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-actions">
+      <button class="btn-reset" onclick="resetFilters()">↺ RESET ALL</button>
+      <div class="active-filters" id="active-label">No filters active — showing all <span>1,470</span> employees</div>
+    </div>
+  </div>
+
+  <div class="kpi-grid" section id="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Employees</div>
+      <div class="kpi-value" id="kpi-total">–</div>
+      <div class="kpi-sub">in current selection</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Attrition Rate</div>
+      <div class="kpi-value" id="kpi-attr">–</div>
+      <div class="kpi-sub">% left the company</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Average Age</div>
+      <div class="kpi-value" id="kpi-age">–</div>
+      <div class="kpi-sub">years old</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Avg Monthly Income</div>
+      <div class="kpi-value" id="kpi-income">–</div>
+      <div class="kpi-sub">USD per month</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Job Satisfaction</div>
+      <div class="kpi-value" id="kpi-sat">–</div>
+      <div class="kpi-sub">avg score (1–4)</div>
+    </div>
+  </div>
+
+  <div class="section-title" section id="attrition-analysis">ATTRITION ANALYSIS</div>
+  <div class="chart-grid chart-grid-3">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Attrition by Department</div>
+        <span class="chart-badge badge-bar">Bar</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-dept"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Overtime Impact</div>
+        <span class="chart-badge badge-bar">Stacked Bar</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-overtime"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Gender Distribution</div>
+        <span class="chart-badge badge-donut">Donut</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-gender"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" section id="workforce-profile">WORKFORCE PROFILE</div>
+  <div class="chart-grid chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Attrition by Job Role</div>
+        <span class="chart-badge badge-hist">Horizontal Bar</span>
+      </div>
+      <div class="chart-container chart-container-tall">
+        <canvas id="chart-jobrole"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Age Distribution</div>
+        <span class="chart-badge badge-hist">Histogram</span>
+      </div>
+      <div class="chart-container chart-container-tall">
+        <canvas id="chart-age"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" section id="satisfaction-compensation">SATISFACTION & COMPENSATION</div>
+  <div class="chart-grid chart-grid-3">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Job Satisfaction vs Attrition</div>
+        <span class="chart-badge badge-bar">Grouped Bar</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-satisfaction"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Avg Income by Role</div>
+        <span class="chart-badge badge-bar">Bar</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-income"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Education Field Spread</div>
+        <span class="chart-badge badge-polar">Polar</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-edu-field"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" section id="tenure-wellbeing">TENURE & WELLBEING</div>
+  <div class="chart-grid chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Attrition Rate by Years at Company</div>
+        <span class="chart-badge badge-line">Line</span>
+      </div>
+      <div class="chart-container chart-container-tall">
+        <canvas id="chart-years"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Work-Life Metrics (Stayed vs Left)</div>
+        <span class="chart-badge badge-radar">Radar</span>
+      </div>
+      <div class="chart-container chart-container-tall">
+        <canvas id="chart-radar"></canvas>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">HR Attrition<span>.</span>Intel</div>
+    <div class="footer-divider"></div>
+    <div class="footer-tagline">Turning workforce data into decisions that matter</div>
+    <div class="footer-divider"></div>
+  </div>
+  <div class="footer-copy">© 2026 · Built with FastAPI & Chart.js · Data is power, use it wisely.</div>
+</footer>
+
+<script>
+  const API = '';  // same origin
+
+  // ── STATE ──
+  const filters = { gender: null, job_role: null, education: null, department: null };
+  const charts = {};
+
+  // ── CHART DEFAULTS ──
+  Chart.defaults.color = '#6b7280';
+  Chart.defaults.borderColor = '#252a35';
+  Chart.defaults.font.family = "'Space Mono', monospace";
+  Chart.defaults.font.size = 10;
+
+  const COLORS = {
+    accent: '#e8ff47', accent2: '#ff4d6d', accent3: '#00e5ff',
+    accent4: '#b47aff', green: '#39ff8a', orange: '#ff8c42',
+    dim: 'rgba(232,255,71,0.15)', dim2: 'rgba(255,77,109,0.15)',
+  };
+
+  function alpha(hex, a) {
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  // ── DROPDOWN CONFIG ──
+  const DROPDOWNS = {
+    'gender-select':     { key: 'gender',     placeholder: 'All Genders',     dropdownId: 'gender-dropdown' },
+    'department-select': { key: 'department',  placeholder: 'All Departments', dropdownId: 'department-dropdown' },
+    'jobrole-select':    { key: 'job_role',    placeholder: 'All Job Roles',   dropdownId: 'jobrole-dropdown' },
+    'education-select':  { key: 'education',   placeholder: 'All Levels',      dropdownId: 'education-dropdown' },
+  };
+
+  // Close all dropdowns except optionally one
+  function closeAllDropdowns(except = null) {
+    Object.keys(DROPDOWNS).forEach(id => {
+      if (id === except) return;
+      const wrap = document.getElementById(id);
+      const trigger = wrap.querySelector('.select-trigger');
+      const dropdown = wrap.querySelector('.select-dropdown');
+      trigger.classList.remove('open');
+      dropdown.classList.remove('open');
+    });
+  }
+
+  function toggleDropdown(selectId) {
+    const wrap = document.getElementById(selectId);
+    const trigger = wrap.querySelector('.select-trigger');
+    const dropdown = wrap.querySelector('.select-dropdown');
+    const isOpen = dropdown.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+      trigger.classList.add('open');
+      dropdown.classList.add('open');
+    }
+  }
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.custom-select')) closeAllDropdowns();
+  });
+
+  function buildDropdown(selectId, options, key) {
+    // options: [{value, label}] or [{value: v, label: v}]
+    const { placeholder, dropdownId } = DROPDOWNS[selectId];
+    const container = document.getElementById(dropdownId);
+    container.innerHTML = '';
+
+    // Clear option
+    const clearOpt = document.createElement('div');
+    clearOpt.className = 'select-option clear-opt';
+    clearOpt.textContent = '↺ Clear selection';
+    clearOpt.onclick = (e) => {
+      e.stopPropagation();
+      setFilter(selectId, null, placeholder);
+    };
+    container.appendChild(clearOpt);
+
+    options.forEach(({ value, label }) => {
+      const opt = document.createElement('div');
+      opt.className = 'select-option';
+      opt.textContent = label;
+      opt.dataset.value = value;
+      opt.onclick = (e) => {
+        e.stopPropagation();
+        setFilter(selectId, value, label);
+      };
+      container.appendChild(opt);
+    });
+  }
+
+  function setFilter(selectId, value, label) {
+    const { key, placeholder, dropdownId } = DROPDOWNS[selectId];
+    const wrap = document.getElementById(selectId);
+    const trigger = wrap.querySelector('.select-trigger');
+    const labelEl = trigger.querySelector('.select-label');
+    const dropdown = document.getElementById(dropdownId);
+
+    // Update state
+    filters[key] = value;
+
+    // Update trigger appearance
+    labelEl.textContent = value ? label : placeholder;
+    trigger.classList.toggle('has-value', !!value);
+
+    // Update option highlight
+    dropdown.querySelectorAll('.select-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.dataset.value === value);
+    });
+
+    // Close dropdown
+    closeAllDropdowns();
+    refreshAll();
+  }
+
+  // ── INIT ──
+  async function init() {
+    const res = await fetch(`${API}/api/filters`);
+    const data = await res.json();
+
+    buildDropdown('gender-select',     data.genders.map(v => ({ value: v, label: v })), 'gender');
+    buildDropdown('department-select', data.departments.map(v => ({ value: v, label: v })), 'department');
+    buildDropdown('jobrole-select',    data.job_roles.map(v => ({ value: v, label: v })), 'job_role');
+    buildDropdown('education-select',  data.educations, 'education');
+
+    await refreshAll();
+  }
+
+  function resetFilters() {
+    Object.keys(filters).forEach(k => filters[k] = null);
+    // Reset all dropdown triggers to placeholder
+    Object.keys(DROPDOWNS).forEach(selectId => {
+      const { placeholder, dropdownId } = DROPDOWNS[selectId];
+      const wrap = document.getElementById(selectId);
+      wrap.querySelector('.select-label').textContent = placeholder;
+      wrap.querySelector('.select-trigger').classList.remove('has-value');
+      document.getElementById(dropdownId).querySelectorAll('.select-option').forEach(o => o.classList.remove('selected'));
+    });
+    closeAllDropdowns();
+    refreshAll();
+  }
+
+  function buildQuery() {
+    const params = new URLSearchParams();
+    if (filters.gender) params.append('gender', filters.gender);
+    if (filters.job_role) params.append('job_role', filters.job_role);
+    if (filters.education) params.append('education', filters.education);
+    if (filters.department) params.append('department', filters.department);
+    return params.toString() ? '?' + params.toString() : '';
+  }
+
+  async function refreshAll() {
+    const q = buildQuery();
+    const [kpis, dept, overtime, gender, jobrole, age, sat, income, eduField, years, radar] = await Promise.all([
+      fetch(`${API}/api/kpis${q}`).then(r => r.json()),
+      fetch(`${API}/api/attrition-by-department${q}`).then(r => r.json()),
+      fetch(`${API}/api/overtime-attrition${q}`).then(r => r.json()),
+      fetch(`${API}/api/gender-split${q}`).then(r => r.json()),
+      fetch(`${API}/api/attrition-by-jobrole${q}`).then(r => r.json()),
+      fetch(`${API}/api/age-distribution${q}`).then(r => r.json()),
+      fetch(`${API}/api/satisfaction-distribution${q}`).then(r => r.json()),
+      fetch(`${API}/api/income-by-role${q}`).then(r => r.json()),
+      fetch(`${API}/api/education-field${q}`).then(r => r.json()),
+      fetch(`${API}/api/years-attrition${q}`).then(r => r.json()),
+      fetch(`${API}/api/worklife-balance${q}`).then(r => r.json()),
+    ]);
+
+    updateKPIs(kpis);
+    updateActiveLabel(kpis.total);
+    renderDept(dept);
+    renderOvertime(overtime);
+    renderGender(gender);
+    renderJobRole(jobrole);
+    renderAge(age);
+    renderSatisfaction(sat);
+    renderIncome(income);
+    renderEduField(eduField);
+    renderYears(years);
+    renderRadar(radar);
+  }
+
+  function updateKPIs(d) {
+    document.getElementById('kpi-total').textContent = d.total.toLocaleString();
+    document.getElementById('kpi-attr').textContent = d.attrition_rate + '%';
+    document.getElementById('kpi-age').textContent = d.avg_age;
+    document.getElementById('kpi-income').textContent = '$' + d.avg_income.toLocaleString();
+    document.getElementById('kpi-sat').textContent = d.avg_satisfaction;
+    const el = document.getElementById('total-count');
+    if (el) el.textContent = d.total.toLocaleString();
+  }
+
+  function updateActiveLabel(total) {
+    const active = Object.entries(filters).filter(([,v]) => v !== null);
+    const el = document.getElementById('active-label');
+    if (active.length === 0) {
+      el.innerHTML = `No filters active — showing all <span>${total.toLocaleString()}</span> employees`;
+    } else {
+      const parts = active.map(([k, v]) => `${k.replace('_',' ')}: <span>${v}</span>`).join(' · ');
+      el.innerHTML = `Active: ${parts} → <span>${total.toLocaleString()}</span> employees`;
+    }
+  }
+
+  // ── CHART HELPERS ──
+  function makeChart(id, config) {
+    if (charts[id]) charts[id].destroy();
+    const ctx = document.getElementById(id).getContext('2d');
+    charts[id] = new Chart(ctx, config);
+  }
+
+  const tooltipStyle = {
+    backgroundColor: '#181c24',
+    borderColor: '#252a35',
+    borderWidth: 1,
+    titleColor: '#e8ff47',
+    bodyColor: '#e8eaf0',
+    padding: 10,
+  };
+
+  // ── CHART RENDERS ──
+  function renderDept(d) {
+    makeChart('chart-dept', {
+      type: 'bar',
+      data: {
+        labels: d.labels,
+        datasets: [
+          { label: 'Stayed', data: d.total.map((t,i) => t - d.attrition[i]), backgroundColor: alpha(COLORS.accent3, 0.7), borderColor: COLORS.accent3, borderWidth: 1, borderRadius: 2 },
+          { label: 'Left', data: d.attrition, backgroundColor: alpha(COLORS.accent2, 0.7), borderColor: COLORS.accent2, borderWidth: 1, borderRadius: 2 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { position: 'top', labels: { color: '#6b7280', boxWidth: 10, padding: 12 } }, tooltip: { ...tooltipStyle, callbacks: { afterLabel: (ctx) => `Rate: ${d.rate[ctx.dataIndex]}%` } } },
+        scales: {
+          x: { stacked: true, grid: { color: '#252a35' }, ticks: { color: '#6b7280' } },
+          y: { stacked: true, grid: { color: '#252a35' }, ticks: { color: '#6b7280' } }
+        }
+      }
+    });
+  }
+
+  function renderOvertime(d) {
+    makeChart('chart-overtime', {
+      type: 'bar',
+      data: {
+        labels: d.labels,
+        datasets: [
+          { label: 'Stayed', data: d.stayed, backgroundColor: alpha(COLORS.green, 0.7), borderColor: COLORS.green, borderWidth: 1, borderRadius: 2 },
+          { label: 'Left', data: d.left, backgroundColor: alpha(COLORS.accent2, 0.7), borderColor: COLORS.accent2, borderWidth: 1, borderRadius: 2 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { position: 'top', labels: { color: '#6b7280', boxWidth: 10, padding: 12 } }, tooltip: tooltipStyle },
+        scales: {
+          x: { stacked: true, grid: { color: '#252a35' }, ticks: { color: '#6b7280' } },
+          y: { stacked: true, grid: { color: '#252a35' }, ticks: { color: '#6b7280' } }
+        }
+      }
+    });
+  }
+
+  function renderGender(d) {
+    makeChart('chart-gender', {
+      type: 'doughnut',
+      data: {
+        labels: d.labels,
+        datasets: [{
+          data: d.total,
+          backgroundColor: [alpha(COLORS.accent3, 0.8), alpha(COLORS.accent4, 0.8)],
+          borderColor: [COLORS.accent3, COLORS.accent4],
+          borderWidth: 2, hoverOffset: 6,
+        }, {
+          data: d.attrition,
+          backgroundColor: [alpha(COLORS.accent2, 0.6), alpha(COLORS.accent2, 0.4)],
+          borderColor: COLORS.accent2, borderWidth: 1,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        cutout: '55%',
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#6b7280', boxWidth: 10, padding: 12 } },
+          tooltip: { ...tooltipStyle, callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw} (dataset: ${ctx.datasetIndex === 0 ? 'Total' : 'Attrition'})` } }
+        }
+      }
+    });
+  }
+
+  function renderJobRole(d) {
+    makeChart('chart-jobrole', {
+      type: 'bar',
+      data: {
+        labels: d.labels,
+        datasets: [
+          { label: 'Attrition Rate %', data: d.rate, backgroundColor: d.rate.map(r => r > 20 ? alpha(COLORS.accent2, 0.8) : alpha(COLORS.accent, 0.7)), borderColor: d.rate.map(r => r > 20 ? COLORS.accent2 : COLORS.accent), borderWidth: 1, borderRadius: 2 },
+        ]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { ...tooltipStyle, callbacks: { label: (ctx) => ` ${ctx.raw}% attrition · ${d.total[ctx.dataIndex]} total` } } },
+        scales: {
+          x: { grid: { color: '#252a35' }, ticks: { color: '#6b7280', callback: v => v + '%' } },
+          y: { grid: { color: '#1a1e26' }, ticks: { color: '#9ca3af' } }
+        }
+      }
+    });
+  }
+
+  function renderAge(d) {
+    makeChart('chart-age', {
+      type: 'bar',
+      data: {
+        labels: d.labels,
+        datasets: [
+          { label: 'Stayed', data: d.total.map((t,i) => t - d.attrition[i]), backgroundColor: alpha(COLORS.accent3, 0.6), borderColor: COLORS.accent3, borderWidth: 1, borderRadius: 2 },
+          { label: 'Left', data: d.attrition, backgroundColor: alpha(COLORS.accent2, 0.7), borderColor: COLORS.accent2, borderWidth: 1, borderRadius: 2 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { color: '#6b7280', boxWidth: 10, padding: 12 } }, tooltip: tooltipStyle },
+        scales: {
+          x: { stacked: true, grid: { color: '#252a35' }, ticks: { color: '#6b7280' } },
+          y: { stacked: true, grid: { color: '#252a35' }, ticks: { color: '#6b7280' } }
+        }
+      }
+    });
+  }
+
+  function renderSatisfaction(d) {
+    makeChart('chart-satisfaction', {
+      type: 'bar',
+      data: {
+        labels: d.labels,
+        datasets: [
+          { label: 'Stayed', data: d.stayed, backgroundColor: alpha(COLORS.green, 0.7), borderColor: COLORS.green, borderWidth: 1, borderRadius: 2 },
+          { label: 'Left', data: d.left, backgroundColor: alpha(COLORS.accent2, 0.7), borderColor: COLORS.accent2, borderWidth: 1, borderRadius: 2 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { position: 'top', labels: { color: '#6b7280', boxWidth: 10 } }, tooltip: tooltipStyle },
+        scales: {
+          x: { grid: { color: '#252a35' }, ticks: { color: '#6b7280', maxRotation: 30 } },
+          y: { grid: { color: '#252a35' }, ticks: { color: '#6b7280' } }
+        }
+      }
+    });
+  }
+
+  function renderIncome(d) {
+    makeChart('chart-income', {
+      type: 'bar',
+      data: {
+        labels: d.labels,
+        datasets: [{
+          label: 'Avg Monthly Income ($)',
+          data: d.avg_income,
+          backgroundColor: d.avg_income.map((v, i) => {
+            const colors = [COLORS.accent, COLORS.accent3, COLORS.accent4, COLORS.green, COLORS.orange, COLORS.accent2, COLORS.accent, COLORS.accent3, COLORS.accent4];
+            return alpha(colors[i % colors.length], 0.7);
+          }),
+          borderColor: d.avg_income.map((v, i) => {
+            const colors = [COLORS.accent, COLORS.accent3, COLORS.accent4, COLORS.green, COLORS.orange, COLORS.accent2, COLORS.accent, COLORS.accent3, COLORS.accent4];
+            return colors[i % colors.length];
+          }),
+          borderWidth: 1, borderRadius: 2,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false }, tooltip: { ...tooltipStyle, callbacks: { label: (ctx) => ` $${ctx.raw.toLocaleString()}` } } },
+        scales: {
+          x: { grid: { color: '#252a35' }, ticks: { color: '#6b7280', callback: v => '$' + (v/1000).toFixed(0) + 'k' } },
+          y: { grid: { color: '#1a1e26' }, ticks: { color: '#9ca3af', font: { size: 9 } } }
+        }
+      }
+    });
+  }
+
+  function renderEduField(d) {
+    const palette = [COLORS.accent, COLORS.accent3, COLORS.accent4, COLORS.green, COLORS.orange, COLORS.accent2];
+    makeChart('chart-edu-field', {
+      type: 'polarArea',
+      data: {
+        labels: d.labels,
+        datasets: [{
+          data: d.total,
+          backgroundColor: palette.slice(0, d.labels.length).map(c => alpha(c, 0.65)),
+          borderColor: palette.slice(0, d.labels.length),
+          borderWidth: 1,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#6b7280', boxWidth: 10, padding: 8, font: { size: 9 } } },
+          tooltip: { ...tooltipStyle, callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw} (${d.attrition[ctx.dataIndex]} left)` } }
+        },
+        scales: { r: { grid: { color: '#252a35' }, ticks: { color: '#6b7280', backdropColor: 'transparent', font: { size: 8 } } } }
+      }
+    });
+  }
+
+  function renderYears(d) {
+    makeChart('chart-years', {
+      type: 'line',
+      data: {
+        labels: d.labels,
+        datasets: [
+          {
+            label: 'Attrition Rate %',
+            data: d.attrition_rate,
+            borderColor: COLORS.accent2, backgroundColor: alpha(COLORS.accent2, 0.1),
+            fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: COLORS.accent2,
+            yAxisID: 'y',
+          },
+          {
+            label: 'Employee Count',
+            data: d.total,
+            borderColor: COLORS.accent3, backgroundColor: 'transparent',
+            tension: 0.4, pointRadius: 2, pointBackgroundColor: COLORS.accent3,
+            borderDash: [4, 4],
+            yAxisID: 'y2',
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { color: '#6b7280', boxWidth: 10, padding: 12 } }, tooltip: tooltipStyle },
+        scales: {
+          x: { grid: { color: '#252a35' }, ticks: { color: '#6b7280', maxTicksLimit: 15 }, title: { display: true, text: 'Years at Company', color: '#6b7280' } },
+          y: { grid: { color: '#252a35' }, ticks: { color: '#6b7280', callback: v => v + '%' }, title: { display: true, text: 'Attrition %', color: '#6b7280' } },
+          y2: { position: 'right', grid: { display: false }, ticks: { color: '#6b7280' }, title: { display: true, text: 'Count', color: '#6b7280' } }
+        }
+      }
+    });
+  }
+
+  function renderRadar(d) {
+    makeChart('chart-radar', {
+      type: 'radar',
+      data: {
+        labels: d.labels,
+        datasets: [
+          { label: 'Stayed', data: d.stayed, borderColor: COLORS.green, backgroundColor: alpha(COLORS.green, 0.15), pointBackgroundColor: COLORS.green, pointRadius: 4 },
+          { label: 'Left', data: d.left, borderColor: COLORS.accent2, backgroundColor: alpha(COLORS.accent2, 0.1), pointBackgroundColor: COLORS.accent2, pointRadius: 4 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { color: '#6b7280', boxWidth: 10, padding: 12 } }, tooltip: tooltipStyle },
+        scales: {
+          r: {
+            min: 1, max: 4,
+            grid: { color: '#252a35' },
+            angleLines: { color: '#252a35' },
+            ticks: { color: '#6b7280', backdropColor: 'transparent', font: { size: 9 }, stepSize: 1 },
+            pointLabels: { color: '#9ca3af', font: { size: 9 } }
+          }
+        }
+      }
+    });
+  }
+
+  // ── HEADER SCROLL TRANSPARENCY ──
+  (function () {
+    const header = document.querySelector('header');
+    const THRESHOLD = 10;
+
+    function onScroll() {
+      if (window.scrollY > THRESHOLD) {
+        header.classList.remove('transparent');
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+        header.classList.add('transparent');
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(); // run once on load
+  })();
+
+  init();
+</script>
+</body>
+</html>
