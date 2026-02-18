@@ -17,7 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── Load CSV ──────────────────────────────────────────────────────────────────
 DATA_PATH = os.path.join(os.path.dirname(__file__), "data.csv")
 
 EDUCATION_MAP = {"1": "Below College", "2": "College", "3": "Bachelor", "4": "Master", "5": "Doctor"}
@@ -42,8 +41,6 @@ def load_data(
             rows.append(row)
     return rows
 
-
-# ─── Filter Options ────────────────────────────────────────────────────────────
 @app.get("/api/filters")
 def get_filters():
     rows = load_data()
@@ -57,8 +54,6 @@ def get_filters():
         "departments": sorted(set(r["Department"] for r in rows)),
     }
 
-
-# ─── KPI Summary ───────────────────────────────────────────────────────────────
 @app.get("/api/kpis")
 def get_kpis(
     gender: Optional[str] = Query(None),
@@ -82,8 +77,6 @@ def get_kpis(
         "avg_satisfaction": round(avg_sat, 2),
     }
 
-
-# ─── Attrition by Category (bar chart) ────────────────────────────────────────
 @app.get("/api/attrition-by-department")
 def attrition_by_department(
     gender: Optional[str] = Query(None),
@@ -129,8 +122,6 @@ def attrition_by_jobrole(
         "rate": [round(role_attr[l] / role_total[l] * 100, 1) if role_total[l] else 0 for l in labels],
     }
 
-
-# ─── Age Distribution (histogram) ─────────────────────────────────────────────
 @app.get("/api/age-distribution")
 def age_distribution(
     gender: Optional[str] = Query(None),
@@ -152,8 +143,6 @@ def age_distribution(
                 attr_counts[idx] += 1
     return {"labels": labels, "total": total_counts, "attrition": attr_counts}
 
-
-# ─── Gender Split (donut) ──────────────────────────────────────────────────────
 @app.get("/api/gender-split")
 def gender_split(
     gender: Optional[str] = Query(None),
@@ -171,8 +160,6 @@ def gender_split(
         "attrition": [attr_cnt[l] for l in labels],
     }
 
-
-# ─── Monthly Income by Job Role (horizontal bar) ───────────────────────────────
 @app.get("/api/income-by-role")
 def income_by_role(
     gender: Optional[str] = Query(None),
@@ -190,8 +177,6 @@ def income_by_role(
         "avg_income": [round(sum(role_income[l]) / len(role_income[l])) if role_income[l] else 0 for l in labels],
     }
 
-
-# ─── Job Satisfaction Distribution (grouped bar) ──────────────────────────────
 @app.get("/api/satisfaction-distribution")
 def satisfaction_distribution(
     gender: Optional[str] = Query(None),
@@ -211,8 +196,6 @@ def satisfaction_distribution(
             stayed[idx] += 1
     return {"labels": sat_labels, "stayed": stayed, "left": left}
 
-
-# ─── Overtime vs Attrition (stacked) ──────────────────────────────────────────
 @app.get("/api/overtime-attrition")
 def overtime_attrition(
     gender: Optional[str] = Query(None),
@@ -230,8 +213,6 @@ def overtime_attrition(
         "left": [data["Yes"]["Yes"], data["No"]["Yes"]],
     }
 
-
-# ─── Education Field Distribution (polar area) ────────────────────────────────
 @app.get("/api/education-field")
 def education_field(
     gender: Optional[str] = Query(None),
@@ -249,8 +230,6 @@ def education_field(
         "attrition": [attr[l] for l in labels],
     }
 
-
-# ─── Years at Company vs Attrition (line) ─────────────────────────────────────
 @app.get("/api/years-attrition")
 def years_attrition(
     gender: Optional[str] = Query(None),
@@ -272,8 +251,6 @@ def years_attrition(
     totals = [year_total[y] for y in labels]
     return {"labels": labels, "attrition_rate": rates, "total": totals}
 
-
-# ─── Work-Life Balance (radar) ─────────────────────────────────────────────────
 @app.get("/api/worklife-balance")
 def worklife_balance(
     gender: Optional[str] = Query(None),
@@ -293,22 +270,17 @@ def worklife_balance(
     labels = ["Job Satisfaction", "Environment", "Relationships", "Work-Life Balance", "Job Involvement"]
     return {"labels": labels, "stayed": stayed_avgs, "left": left_avgs}
 
-
-# ─── Health Check ──────────────────────────────────────────────────────────────
 @app.get("/health")
 @app.head("/health")
 def health_check():
     return {"status": "ok"}
 
-
-# ─── Serve Frontend ────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 @app.head("/")
 def serve_frontend():
     return FileResponse("static/index.html")
-
 
 if __name__ == "__main__":
     import uvicorn
