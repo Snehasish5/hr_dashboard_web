@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 # ─── Load CSV ──────────────────────────────────────────────────────────────────
-DATA_PATH = os.path.join(os.path.dirname(__file__), r"D:\Project\hr_dashboard\data.csv")
+DATA_PATH = os.path.join(os.path.dirname(__file__), "data.csv")
 
 EDUCATION_MAP = {"1": "Below College", "2": "College", "3": "Bachelor", "4": "Master", "5": "Doctor"}
 
@@ -294,10 +294,18 @@ def worklife_balance(
     return {"labels": labels, "stayed": stayed_avgs, "left": left_avgs}
 
 
+# ─── Health Check ──────────────────────────────────────────────────────────────
+@app.get("/health")
+@app.head("/health")
+def health_check():
+    return {"status": "ok"}
+
+
 # ─── Serve Frontend ────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
+@app.head("/")
 def serve_frontend():
     return FileResponse("static/index.html")
 
