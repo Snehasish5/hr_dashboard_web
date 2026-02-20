@@ -1,17 +1,3 @@
-"""
-Standalone HR Attrition Dashboard Server
-No external dependencies required — uses Python's built-in http.server.
-
-Usage:
-    python3 server.py
-
-Then open http://localhost:8000 in your browser.
-
-For production, use the FastAPI version:
-    pip install -r requirements.txt
-    uvicorn main:app --reload
-"""
-
 import csv, json, os
 from collections import Counter, defaultdict
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -20,7 +6,6 @@ from urllib.parse import urlparse, parse_qs
 DATA_PATH = os.path.join(os.path.dirname(__file__), "data.csv")
 EDUCATION_MAP = {"1": "Below College", "2": "College", "3": "Bachelor", "4": "Master", "5": "Doctor"}
 
-# ── Data Loader ──────────────────────────────────────────────────────────────
 def load_data(gender=None, job_role=None, education=None, department=None):
     rows = []
     with open(DATA_PATH, encoding="utf-8-sig") as f:
@@ -41,7 +26,6 @@ def get_params(qs):
         "department": p.get("department", [None])[0],
     }
 
-# ── API Handlers ─────────────────────────────────────────────────────────────
 def api_filters():
     rows = load_data()
     return {
@@ -157,7 +141,6 @@ def api_worklife(p):
         left_avgs.append(round(sum(left)/len(left),2) if left else 0)
     return {"labels": labels, "stayed": stayed_avgs, "left": left_avgs}
 
-# ── HTTP Handler ─────────────────────────────────────────────────────────────
 ROUTES = {
     "/api/filters": (api_filters, False),
     "/api/kpis": (api_kpis, True),
